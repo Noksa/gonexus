@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"go.uber.org/multierr"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -380,13 +381,19 @@ func UploadComponent(rm RM, repo string, component UploadComponentWriter) error 
 
 	url := fmt.Sprintf(restListComponentsByRepo, repo)
 	req, err := rm.NewRequest("POST", url, &b)
-	req.Header.Set("Content-Type", w.FormDataContentType())
 	if err != nil {
 		return doError(err)
 	}
+	req.Header.Set("Content-Type", w.FormDataContentType())
 
-	if _, resp, err := rm.Do(req); err != nil && resp.StatusCode != http.StatusNoContent {
-		return doError(err)
+	_, resp, err := rm.Do(req)
+	if err != nil {
+		var mErr error
+		mErr = multierr.Append(mErr, err)
+		if resp != nil {
+			mErr = multierr.Append(mErr, fmt.Errorf("could not make request, response: %v", *resp))
+		}
+		return doError(mErr)
 	}
 
 	return nil
