@@ -391,7 +391,11 @@ func UploadComponent(rm RM, repo string, component UploadComponentWriter) error 
 		var mErr error
 		mErr = multierr.Append(mErr, err)
 		if resp != nil {
-			mErr = multierr.Append(mErr, fmt.Errorf("could not make request, response: %v", *resp))
+			if resp.StatusCode == http.StatusNoContent {
+				return nil
+			} else {
+				mErr = multierr.Append(mErr, fmt.Errorf("could not make request, response: %v", *resp))
+			}
 		}
 		return doError(mErr)
 	}
